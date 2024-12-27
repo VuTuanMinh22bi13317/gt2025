@@ -5,7 +5,8 @@ Push your project here.
 ===
 
 Student Name: Vu Tuan Minh
-Student ID: 22BI13317.
+
+Student ID: 22BI13317
 
 ===
 
