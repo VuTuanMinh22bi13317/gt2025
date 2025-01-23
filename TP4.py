@@ -1,136 +1,96 @@
-import sys
+import heapq
+from collections import defaultdict
 
-class Graph:
-    def __init__(self, vertices):
-        self.V = vertices
-        self.graph = [[0 for _ in range(vertices)] for _ in range(vertices)]
+# Define the graph
+vertices = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+edges = {
+    (1, 2): 4, (1, 5): 1, (1, 7): 2,
+    (2, 3): 7, (2, 6): 5,
+    (3, 4): 1, (3, 6): 8,
+    (4, 6): 6, (4, 7): 4, (4, 8): 3,
+    (5, 6): 9, (5, 7): 10,
+    (6, 9): 2,
+    (7, 7): 2, (7, 9): 8,
+    (8, 9): 1
+}
 
-    # Function to add an edge to the graph (for Kruskal's algorithm)
-    def addEdge(self, u, v, w):
-        # For Kruskal's algorithm, we store edges in a list
-        self.graph[u][v] = w
-        self.graph[v][u] = w  # Because it's an undirected graph
+# Convert edges to adjacency list
+adj_list = defaultdict(list)
+for (u, v), weight in edges.items():
+    adj_list[u].append((v, weight))
+    adj_list[v].append((u, weight)) # Since the graph is undirected
 
-    # A utility function to find set of an element i (for Kruskal's algorithm)
-    def find(self, parent, i):
-        if parent[i] != i:
-            parent[i] = self.find(parent, parent[i])
-        return parent[i]
+# Prim's algorithm
+def prim(root):
+    mst = []
+    visited = set()
+    min_heap = [(0, root, -1)] # (weight, current_vertex, previous_vertex)
+    total_weight = 0
 
-    # A function that does union of two sets (for Kruskal's algorithm)
-    def union(self, parent, rank, x, y):
-        if rank[x] < rank[y]:
-            parent[x] = y
-        elif rank[x] > rank[y]:
-            parent[y] = x
-        else:
-            parent[y] = x
-            rank[x] += 1
+    while min_heap:
+        weight, current, prev = heapq.heappop(min_heap)
+        if current in visited:
+            continue
 
-    # Prim's Minimum Spanning Tree (MST) algorithm
-    def primMST(self, root):
-        key = [sys.maxsize] * self.V
-        parent = [-1] * self.V  # Fix: Start with -1 to indicate no parent yet
-        mstSet = [False] * self.V
-        
-        key[root] = 0  # Start with root node
-        
-        for cout in range(self.V):
-            # Select the vertex with the minimum key value that is not yet included in MST
-            u = self.minKey(key, mstSet)
-            mstSet[u] = True
+        visited.add(current)
+        if prev != -1:
+            mst.append((prev, current, weight))
+            total_weight += weight
 
-            for v in range(self.V):
-                # Update key[v] if a smaller weight edge is found and vertex v is not yet included in MST
-                if self.graph[u][v] > 0 and not mstSet[v] and key[v] > self.graph[u][v]:
-                    key[v] = self.graph[u][v]
-                    parent[v] = u
+        for neighbor, edge_weight in adj_list[current]:
+            if neighbor not in visited:
+                heapq.heappush(min_heap, (edge_weight, neighbor, current))
 
-        self.printMST(parent)
+    return mst, total_weight
 
-    # Utility function for Prim's algorithm to find the vertex with the minimum key
-    def minKey(self, key, mstSet):
-        min = sys.maxsize
-        min_index = -1
-        for v in range(self.V):
-            if key[v] < min and not mstSet[v]:
-                min = key[v]
-                min_index = v
-        return min_index
+# Kruskal's algorithm
+def kruskal():
+    mst = []
+    total_weight = 0
+    parent = {v: v for v in vertices}
+    rank = {v: 0 for v in vertices}
 
-    # Print the MST and calculate the total weight for Prim's algorithm
-    def printMST(self, parent):
-        print("\nPrim's Algorithm MST:")
-        total_weight = 0
-        for i in range(self.V):  # Loop through all vertices
-            if parent[i] != -1:  # Check if parent is valid
-                print(f"{parent[i]} - {i} \t {self.graph[i][parent[i]]}")
-                total_weight += self.graph[i][parent[i]]
-        print("Total Weight of MST (Prim's):", total_weight)
+    def find(v):
+        if parent[v] != v:
+            parent[v] = find(parent[v])
+        return parent[v]
 
-    # Kruskal's Minimum Spanning Tree (MST) algorithm
-    def KruskalMST(self):
-        result = []
-        i = 0  # Index for sorted edges
-        e = 0  # Number of edges in MST
-        edges = []
+    def union(u, v):
+        root_u = find(u)
+        root_v = find(v)
 
-        # Collect edges from the adjacency matrix
-        for u in range(self.V):
-            for v in range(u + 1, self.V):
-                if self.graph[u][v] > 0:
-                    edges.append([u, v, self.graph[u][v]])
+        if root_u != root_v:
+            if rank[root_u] > rank[root_v]:
+                parent[root_v] = root_u
+            elif rank[root_u] < rank[root_v]:
+                parent[root_u] = root_v
+            else:
+                parent[root_v] = root_u
+                rank[root_u] += 1
 
-        # Sort edges by weight
-        edges = sorted(edges, key=lambda item: item[2])
-        
-        parent = [node for node in range(self.V)]
-        rank = [0] * self.V
+    # Sort edges by weight
+    sorted_edges = sorted(edges.items(), key=lambda x: x[1])
 
-        # Run Kruskal's algorithm to find the MST
-        while e < self.V - 1:
-            u, v, w = edges[i]
-            i += 1
-            x = self.find(parent, u)
-            y = self.find(parent, v)
+    for (u, v), weight in sorted_edges:
+        if find(u) != find(v):
+            union(u, v)
+            mst.append((u, v, weight))
+            total_weight += weight
 
-            if x != y:
-                e += 1
-                result.append([u, v, w])
-                self.union(parent, rank, x, y)
+    return mst, total_weight
 
-        # Print the results
-        minimumCost = 0
-        print("\nKruskal's Algorithm MST:")
-        for u, v, weight in result:
-            minimumCost += weight
-            print(f"{u} -- {v} == {weight}")
-        print("Total Weight of MST (Kruskal's):", minimumCost)
+if __name__ == "__main__":
+    # User input for Prim's algorithm
+    root = int(input(f"Enter root node for Prim's algorithm (choose from {vertices}): "))
+    if root not in vertices:
+        print("Invalid root node.")
+    else:
+        print("Prim's Algorithm")
+        prim_mst, prim_weight = prim(root)
+        print("Edges in MST:", prim_mst)
+        print("Total weight:", prim_weight)
 
-# Driver code
-if __name__ == '__main__':
-    vertices = 9  # Number of vertices (adjust based on your graph)
-    g = Graph(vertices)
-    
-    # Input edges for the graph (adjust to zero-based indexing)
-    g.addEdge(0, 1, 4)
-    g.addEdge(0, 4, 1)
-    g.addEdge(0, 6, 2)
-    g.addEdge(1, 2, 7)
-    g.addEdge(1, 5, 5)
-    g.addEdge(2, 3, 1)
-    g.addEdge(2, 5, 8)
-    g.addEdge(3, 6, 4)
-    g.addEdge(4, 5, 9)
-    g.addEdge(4, 6, 10)
-    g.addEdge(5, 8, 2)
-    g.addEdge(6, 7, 2)
-    g.addEdge(7, 3, 4)
-    g.addEdge(7, 8, 8)
-    
-    # Ask the user for the root node for Prim's algorithm (0-based index)
-    root_node = int(input("Enter the root node (0-8): "))
-
-    # Run both algorithms
-    g.primMST(root_node)
-    g.KruskalMST()
+    print(" Kruskal's Algorithm ")
+    kruskal_mst, kruskal_weight = kruskal()
+    print("Edges in MST:", kruskal_mst)
+    print("Total weight:", kruskal_weight)
